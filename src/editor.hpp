@@ -1,59 +1,47 @@
-#include "global_func.hpp"
-#include <cstdlib>
-#include <string>
+#pragma once
 
-// This namespace is for terminal Mode changing variables
-namespace terminal_mode_change {
-	HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE); //This handle gets the state
-	DWORD original_mode; //This variable stores the original console mode for restoring
-	DWORD raw_mode; //This variable stores the changed raw mode
+#include <Windows.h>
+
+class Editor {
+
+	//Variable
+	public:
+		
+	
+
+	private:
+		HANDLE std_input;   //Handle for input
+		HANDLE std_output; //Handle for output
+		CONSOLE_SCREEN_BUFFER_INFO console_info; //Handle for console buffer
 
 
-	// This functions enables the raw mode of the console
-	void enableRawMode()
-	{
-		if(!GetConsoleMode(hInput, &original_mode)){
-			die("Failed to get the console mode");
-		}
-		std::atexit(disableRawMode);
-		raw_mode = original_mode;
-		raw_mode &= ~(ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT |ENABLE_PROCESSED_OUTPUT);
-		raw_mode |= 0;
-		raw_mode |= ENABLE_WINDOW_INPUT;
+	//Methods
+	public:
+		Editor();
+		void process_input();
 
-		if(!SetConsoleMode(hInput,raw_mode)) {
-			die("Failed to restore console mode");
-		}
+	private:
+		//Setters
+		void set_Std_in();
+		void set_Std_out();
+		void set_console_info();
 
+		void refresh_screen();
+		void draw_rows();
+		void show_key(char c);
+		char read_key();
+		void tbuffer_state();
+
+};
+
+/*
+	editor::refresh_screen();
+	editor::draw_rows();
+	while(true) {
+		editor::process_key();
 	}
 
-	// This function disables the raw_mode function
-	void disableRawMode() {
-		if (!SetConsoleMode(hInput, original_mode)) {
-			die("Failed to restore console mode");
-		}
-	}
-
-
-	void die(const std::string& message) {
-		DWORD errorCode = GetLastError();
-		LPSTR messageBuffer = nullptr;
-		size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-
-		std::string fullMessage = message;
-		if (size == 0) {
-			fullMessage += ": Unknown error";
-		} else {
-			fullMessage += ": " + std::string(messageBuffer);
-			LocalFree(messageBuffer);
-		}
-
-		throw std::system_error(errorCode, std::system_category(), fullMessage);
-	}
-
-} //namespace terminal_mode_change
-  //
+*/
 
 /*
 namespace editor {
@@ -92,7 +80,7 @@ namespace editor {
 	}
 
 
-	void process_key() {
+	void Editor::process_key() {
 
 		char c = read_key();
 		show_key(c);
