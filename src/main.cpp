@@ -2,16 +2,12 @@
 #include "editor.hpp"
 
 int main() {
-	//editor::refresh_screen();
-	//editor::draw_rows();
+	//Using a Editor Object
 	Editor ex;
-	//ex.refresh_screen();
-	//ex.draw_rows();
 	
 	//Application Loop
 	while(true) {
-		//editor::process_key();
-		ex.process_input();
+		ex.run();
 	}
 	return 0;
 }

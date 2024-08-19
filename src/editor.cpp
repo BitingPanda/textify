@@ -1,61 +1,98 @@
 #include "editor.hpp"
+#include "curses.h"
 #include "global_func.hpp"
 
 
+
 Editor::Editor() {
-	//Setting everything up for other operations
-	set_Std_in();
-	set_Std_out();
+	//Initialising the Libraries
+	initscr();
+
+	//Setting Things
 	set_console_info();
 
-	refresh_screen();
-	draw_rows();
+	//Drawing the GUI
+	draw_top_bar();
+	draw_bot_bar();
+	draw_mid_area();
 }
 
 
-void Editor::set_Std_in() {
-	//Geting the handle for the input handle
-	std_input = GetStdHandle(STD_INPUT_HANDLE);
-	if(std_input == INVALID_HANDLE_VALUE) return;
+Editor::~Editor() {
+	// Clean up
+	delwin(Top_bar);
+	delwin(Mid_area);
+	delwin(Bot_bar);
+	endwin();  // End ncurses mode
 }
-void Editor::set_Std_out() {
-	//Geting the handle for the output handle
-	std_output = GetStdHandle(STD_OUTPUT_HANDLE);
-	//Checks for error in retrieving the handle
-	if(std_output == INVALID_HANDLE_VALUE) return;
-}
+
+
 void Editor::set_console_info() {
-	//Checks error in retrival of console_info
-	if(!GetConsoleScreenBufferInfo(std_output, &console_info)) return;
+	getmaxyx(stdscr, max_y_terminal , max_x_terminal);
+}
+
+
+void Editor::draw_top_bar() {
+	//Creates the Top Bar
+	Top_bar = newwin(1, max_x_terminal, 0, 0);
+	refresh();
+
+	//Creates the writing
+	int max_y_Top_bar, max_x_Top_bar;
+	getmaxyx(Top_bar, max_y_Top_bar , max_x_Top_bar);
+	wattron(Top_bar,A_REVERSE);
+	mvwhline(Top_bar, 0, 0, ' ', ((max_x_terminal/2)-7));
+	mvwprintw(Top_bar, 0, ((max_x_terminal/2)-7), "Textify");
+	mvwhline(Top_bar, 0, ((max_x_terminal/2)), ' ', max_x_terminal);
+	wattroff(Top_bar,A_REVERSE);
+	wrefresh(Top_bar);
+}
+
+
+void Editor::draw_mid_area() {
+	Mid_area = newwin(max_y_terminal-2, max_x_terminal, 1, 0 );
+	//refresh();
+
+	// Enable keypad and scrolling for Mid_area
+	keypad(Mid_area, TRUE);
+	scrollok(Mid_area, TRUE);
+
+	// Move the cursor to the top-left corner of Mid_area
+	wmove(Mid_area, 0, 0);
+	wrefresh(Mid_area);
+}
+
+
+
+void Editor::draw_bot_bar() {
+	Bot_bar = newwin(1, max_x_terminal,max_y_terminal-1, 0);
+	refresh();
+
+	// Fill the bottom bar with spaces in reverse video mode
+	wattron(Bot_bar, A_REVERSE);
+	mvwhline(Bot_bar, 0, 0, ' ', max_x_terminal);
+	wattroff(Bot_bar, A_REVERSE);
+	wrefresh(Bot_bar);
+}
+
+
+char Editor::read_key() {
+	terminal_mode_change::enableRawMode();
+
+	int c;
+	char ch;
+
+	c = getch();
+	ch = static_cast<char>(c);
+
+	return ch;
 }
 
 
 void Editor::show_key(char c) {
-	if (iscntrl(c)) {
-		printf("%d\r\n", c);
-	}
-	else {
-		printf("%d ('%c')\r\n", c, c);
-	}
-}
-
-
-
-char Editor::read_key() {
-
-	terminal_mode_change::enableRawMode();
-
-	DWORD bytesRead;
-
-	char c;
-
-	if(!ReadFile(std_input,&c,1,&bytesRead,nullptr))
-	{
-		terminal_mode_change::die("Error Reading input");
-	}
-
-	return c;
-
+	wprintw(Mid_area,"%c ",c);
+	wprintw(Mid_area,"%d \n", c);
+	wrefresh(Mid_area);
 }
 
 
@@ -65,62 +102,14 @@ void Editor::process_input() {
 	show_key(c);
 
 	switch (c) {
-	
 		case 17:
-			refresh_screen();
+			refresh();
 			exit(0);
 			break;
 	}
-
 }
 
 
-
-
-
-void Editor::refresh_screen() {
-
-
-	//DWORD is a type used in unsigned integer of 32 bit
-	DWORD count;
-	//The cell count is calculated by multiplying number of columns and number of rows
-	DWORD cellCount = console_info.dwSize.X * console_info.dwSize.Y;
-	// COORD is another struct that defines the coordinates of the buffer
-	COORD homeCoordinates = {0,0};
-
-
-	//Filling the whole buffer with spaces//
-	//hstd out is the handle to console screen
-	//(TCHAR) ' ' is the thing which will fill the screen with
-	//cellcount is how many cells that have to be filled
-	//homeCoordinates is the starting Coordinates
-	//count receives the number of characters actually written
-	if(!FillConsoleOutputCharacter(std_output, (TCHAR) ' ', cellCount, homeCoordinates, &count)) return;
-
-	//Move the cursor to the top left corner//
-	//homeCoordinates is the coordinate where the cursor should be
-	SetConsoleCursorPosition(std_output,homeCoordinates);
-}
-
-
-void Editor::draw_rows() {
-	COORD coordinates = {0,0};
-	DWORD count;
-
-
-	for(int i = 0; i<console_info.dwSize.Y;i++) {
-		//coordinates.X = 0;
-		coordinates.Y = i;
-
-		if(!FillConsoleOutputCharacter(std_output,(TCHAR) '~',1,coordinates, &count)) return;
-	}
-
-}
-
-void Editor::tbuffer_state() {
-	HANDLE std_output = GetStdHandle(STD_OUTPUT_HANDLE);
-	if(std_output == INVALID_HANDLE_VALUE) return;
-
-	CONSOLE_SCREEN_BUFFER_INFO console_info;
-	if(!GetConsoleScreenBufferInfo(std_output,&console_info)) return;
+void Editor::run() {
+	process_input();
 }
